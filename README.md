@@ -1,7 +1,7 @@
 # automation-of-spatial-order-evaluation
 automation of the method for spatial order evaluation for rural areas
 
-automatyzacja oceny ładu przestrzennego obszarów wiejskich
+Repository contains 9 scripts which are automating individual spatial calculations. All scripts are based on QGIS Python API. Code includes simple GUI for inputting necessary data.
 
-Link do artykułu naukowego:
+Link to article which is explains the method:
 https://bazhum.muzhp.pl/media/files/Acta_Scientiarum_Polonorum_Administratio_Locorum/Acta_Scientiarum_Polonorum_Administratio_Locorum-r2004-t3-n1/Acta_Scientiarum_Polonorum_Administratio_Locorum-r2004-t3-n1-s31-43/Acta_Scientiarum_Polonorum_Administratio_Locorum-r2004-t3-n1-s31-43.pdf
