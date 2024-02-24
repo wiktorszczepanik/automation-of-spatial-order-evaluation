@@ -1,6 +1,6 @@
 ### ***"automation of the method for spatial order evaluation for rural areas"***
 
-This repository comprises nine scripts designed to automate individual spatial calculations, all based on the QGIS Python API. Each script includes a simple GUI for inputting the necessary data. The code is intended to run without any errors on QGIS 3.16 and later versions.
+This repository comprises 9 scripts designed to automate individual spatial calculations, all based on the QGIS Python API. Each script includes a simple GUI for inputting the necessary data. The code is intended to run without any errors on QGIS 3.16 and later versions.
 
 ![alt text](img/result.png?raw=true)
 *result for the agricultural area of Konstancin-Jeziorna*
