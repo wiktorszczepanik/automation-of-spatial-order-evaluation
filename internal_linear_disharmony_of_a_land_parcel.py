@@ -38,7 +38,7 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
         return self.tr("tabela 6")
 
     def initAlgorithm(self, config=None):
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 'INPUT3',
@@ -46,7 +46,7 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
                 types=[QgsProcessing.TypeVectorPolygon]
             )
         )
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 'INPUT2',
@@ -54,7 +54,7 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
                 types=[QgsProcessing.TypeVectorPolygon]
             )
         )
-        
+
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 'OUTPUT',
@@ -63,10 +63,9 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        
-        
+
         # script I part
-        
+
         area_plot = processing.run("native:fieldcalculator", {
                 'INPUT': parameters['INPUT3'],
                 'FIELD_NAME':'area_plot',
@@ -76,13 +75,13 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'$area',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
-        difference_sw_p = processing.run("native:difference", 
+
+        difference_sw_p = processing.run("native:difference",
                 {'INPUT':area_plot['OUTPUT'],
                 'OVERLAY':parameters['INPUT2'],
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         area_plot_sw_p = processing.run("native:fieldcalculator", {
                 'INPUT': difference_sw_p['OUTPUT'],
                 'FIELD_NAME':'area_plot_sw_p',
@@ -92,7 +91,7 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'$area',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         area_use_sw_p = processing.run("native:fieldcalculator", {
                 'INPUT': area_plot_sw_p['OUTPUT'],
                 'FIELD_NAME':'area_use_sw_p',
@@ -102,7 +101,7 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'100-(round((("area_plot_sw_p"/"area_plot")*100), 3))',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         join_polygons_sw_p = processing.run("native:joinattributestable", {
                 'INPUT': area_plot['OUTPUT'],
                 'FIELD':'teryt',
@@ -114,7 +113,7 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
                 'PREFIX':'',
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-        
+
         dysharmony_assessment_plot = processing.run("native:fieldcalculator", {
                 'INPUT': join_polygons_sw_p['OUTPUT'],
                 'FIELD_NAME':'o6',
@@ -124,17 +123,13 @@ class DysharmoniaProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'CASE WHEN "area_use_sw_p" >= 0 AND "area_use_sw_p" < 0.1 THEN 3 WHEN "area_use_sw_p" >= 0.1 AND "area_use_sw_p" < 1 THEN 2 WHEN "area_use_sw_p" >= 1 AND "area_use_sw_p" < 2.2 THEN 1 ELSE 0 END',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-        
+
         # cleanig data
-        
+
         drop_fields = processing.run("native:deletecolumn", {
                 'INPUT': dysharmony_assessment_plot['OUTPUT'],
                 'COLUMN':['area_plot', 'teryt_2'],
                 'OUTPUT': parameters['OUTPUT']
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
-        
-        
-        
-        
+
         return {'OUTPUT': drop_fields['OUTPUT']}

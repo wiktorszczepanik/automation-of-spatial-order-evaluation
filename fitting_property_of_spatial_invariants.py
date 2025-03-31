@@ -38,7 +38,7 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
         return self.tr("tabela 2")
 
     def initAlgorithm(self, config=None):
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 'INPUT3',
@@ -46,7 +46,7 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 types=[QgsProcessing.TypeVectorPolygon]
             )
         )
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 'INPUT2',
@@ -54,7 +54,7 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 types=[QgsProcessing.TypeVectorPolygon]
             )
         )
-        
+
         self.addParameter(
             QgsProcessingParameterRasterDestination(
                 'OUTPUT',
@@ -63,9 +63,9 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-                        
+
         # script I part
-        
+
         row_num_poly = processing.run("native:fieldcalculator", {
                 'INPUT': parameters['INPUT3'],
                 'FIELD_NAME':'row_num_poly',
@@ -75,12 +75,12 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'@row_number',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-        
+
         pol_to_line = processing.run("native:polygonstolines", {
                 'INPUT':row_num_poly['OUTPUT'],
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         length_plot = processing.run("native:fieldcalculator", {
                 'INPUT': pol_to_line['OUTPUT'],
                 'FIELD_NAME':'length_plot',
@@ -90,28 +90,28 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'$length',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         explode_line = processing.run("native:explodelines", {
                 'INPUT': length_plot['OUTPUT'],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                       
+
         split_line = processing.run("native:splitlinesbylength", {
                 'INPUT':explode_line['OUTPUT'],
                 'LENGTH':5,
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         spatial_index_one = processing.run("native:createspatialindex", {
                 'INPUT': split_line['OUTPUT']}, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         selection_and_delete = processing.run("native:extractbylocation", {
                 'INPUT':split_line['OUTPUT'],
                 'PREDICATE':[0],
                 'INTERSECT':parameters['INPUT2'],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-          
+
         length_new_plot = processing.run("native:fieldcalculator", {
                 'INPUT': selection_and_delete['OUTPUT'],
                 'FIELD_NAME':'length_new_plot',
@@ -121,7 +121,7 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'$length',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         aggregate_geom = processing.run("native:aggregate", {
                 'INPUT': length_new_plot['OUTPUT'],
                 'GROUP_BY':'"row_num_poly"',
@@ -131,7 +131,7 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 {'aggregate': 'sum','delimiter': ',','input': '"length_new_plot"','length': 0,'name': 'length_new_plot','precision': 0,'type': 2}],
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         join_f_polygons = processing.run("native:joinattributestable", {
                 'INPUT': row_num_poly['OUTPUT'],
                 'FIELD':'row_num_poly',
@@ -143,7 +143,7 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 'PREFIX':'',
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         border_fit = processing.run("native:fieldcalculator", {
                 'INPUT': join_f_polygons['OUTPUT'],
                 'FIELD_NAME':'border_fit',
@@ -153,7 +153,7 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'("length_new_plot"/"length_plot")*100',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         fit_evaluation = processing.run("native:fieldcalculator", {
                 'INPUT': border_fit['OUTPUT'],
                 'FIELD_NAME':'fit_evaluation',
@@ -165,15 +165,11 @@ class WpasowanieGranicProcessingAlgorithm(QgsProcessingAlgorithm):
                 }, is_child_algorithm=True, context=context, feedback=feedback)
 
         # cleanig data
-        
+
         drop_fields = processing.run("native:deletecolumn", {
                 'INPUT': fit_evaluation['OUTPUT'],
                 'COLUMN':['vertex_index', 'vertex_part', 'vertex_part_index', 'distance', 'angle', 'xy_id', 'row_num_poly', 'length_plot', 'length_new_plot', 'border_fit'],
                 'OUTPUT': parameters['OUTPUT']
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
-        
-        
-        
-        
+
         return {'OUTPUT': drop_fields['OUTPUT']}

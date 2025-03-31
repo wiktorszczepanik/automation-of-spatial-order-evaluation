@@ -38,7 +38,7 @@ class ProstoliniowoscNienaturalnychProcessingAlgorithm(QgsProcessingAlgorithm):
         return self.tr("tabela 3")
 
     def initAlgorithm(self, config=None):
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 'INPUT',
@@ -46,7 +46,7 @@ class ProstoliniowoscNienaturalnychProcessingAlgorithm(QgsProcessingAlgorithm):
                 types=[QgsProcessing.TypeVectorPolygon]
             )
         )
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 'OUTPUT',
@@ -55,15 +55,14 @@ class ProstoliniowoscNienaturalnychProcessingAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        
-        
+
         # script I part
-        
+
         line_polygon_layer = processing.run("native:polygonstolines", {
-                'INPUT': parameters['INPUT'], 
+                'INPUT': parameters['INPUT'],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         num_id = processing.run("native:fieldcalculator", {
                 'INPUT': line_polygon_layer['OUTPUT'],
                 'FIELD_NAME':'num_id',
@@ -73,21 +72,21 @@ class ProstoliniowoscNienaturalnychProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'$id',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         explode_line = processing.run("native:explodelines", {
                 'INPUT': num_id['OUTPUT'],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-            
+
         marge_line = processing.run("lftools:directionalmerge", {
                 'LINES': explode_line['OUTPUT'],
                 'TYPE':0,
                 'ANGLE':2,
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         # script II part
-                
+
         agg_str_line = processing.run("native:aggregate", {
                 'INPUT': marge_line['OUTPUT'],
                 'GROUP_BY':'"num_id"',
@@ -96,8 +95,8 @@ class ProstoliniowoscNienaturalnychProcessingAlgorithm(QgsProcessingAlgorithm):
                 {'aggregate': 'count','delimiter': ',','input': '"num_id"','length': 50,'name': 'liczba_zalaman','precision': 0,'type': 2}],
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
-                
+
+
         str_evaluation = processing.run("native:fieldcalculator", {
                 'INPUT': agg_str_line['OUTPUT'],
                 'FIELD_NAME':'str_evaluation',
@@ -107,7 +106,7 @@ class ProstoliniowoscNienaturalnychProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'CASE WHEN "liczba_zalaman" = 4 THEN 3 WHEN "liczba_zalaman" = 3 OR "liczba_zalaman" = 5 THEN 2 WHEN "liczba_zalaman" >= 6 AND "liczba_zalaman" <= 10 THEN 1 WHEN "liczba_zalaman" > 10 THEN 0 END',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         join_evaluation = processing.run("native:joinattributestable", {
                 'INPUT': parameters['INPUT'],
                 'FIELD':'teryt',
@@ -119,17 +118,13 @@ class ProstoliniowoscNienaturalnychProcessingAlgorithm(QgsProcessingAlgorithm):
                 'PREFIX':'',
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-        
+
         # cleanig data
-        
+
         drop_fields = processing.run("native:deletecolumn", {
                 'INPUT': join_evaluation['OUTPUT'],
                 'COLUMN':['num_id'],
                 'OUTPUT': parameters['OUTPUT']
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
-        
-        
-        
-        
+
         return {'OUTPUT': drop_fields['OUTPUT']}

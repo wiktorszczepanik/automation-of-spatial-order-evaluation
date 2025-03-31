@@ -38,7 +38,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
         return self.tr("tabela 4")
 
     def initAlgorithm(self, config=None):
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 'INPUT',
@@ -46,7 +46,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 types=[QgsProcessing.TypeVectorPolygon]
             )
         )
-        
+
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 'OUTPUT',
@@ -55,10 +55,9 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
         )
 
     def processAlgorithm(self, parameters, context, feedback):
-        
-        
+
         # script I part
-        
+
         direction_plot = processing.run("native:fieldcalculator", {
                 'INPUT': parameters['INPUT'],
                 'FIELD_NAME':'direction_plot',
@@ -68,7 +67,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'main_angle($geometry)',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         direction_plot_clean = processing.run("native:fieldcalculator", {
                 'INPUT': direction_plot['OUTPUT'],
                 'FIELD_NAME':'direction_plot_clean',
@@ -78,12 +77,12 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'CASE WHEN "direction_plot" >= 180 THEN "direction_plot" - 180  ELSE "direction_plot" END',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         lines_polygon_layer = processing.run("native:polygonstolines", {
-                'INPUT': direction_plot_clean['OUTPUT'], 
+                'INPUT': direction_plot_clean['OUTPUT'],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         lines_length = processing.run("native:fieldcalculator", {
                 'INPUT': lines_polygon_layer['OUTPUT'],
                 'FIELD_NAME':'lines_length',
@@ -93,19 +92,19 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'$length',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         explode_line = processing.run("native:explodelines", {
                 'INPUT': lines_length['OUTPUT'],
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         marge_line = processing.run("lftools:directionalmerge", {
                 'LINES': explode_line['OUTPUT'],
                 'TYPE':0,
                 'ANGLE':1,
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         one_line_length = processing.run("native:fieldcalculator", {
                 'INPUT': marge_line['OUTPUT'],
                 'FIELD_NAME':'one_line_length',
@@ -115,7 +114,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'$length',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         percentage_long = processing.run("native:fieldcalculator", {
                 'INPUT': one_line_length['OUTPUT'],
                 'FIELD_NAME':'percentage_long',
@@ -125,7 +124,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'(maximum("one_line_length", "teryt") / "lines_length") * 100',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         for_delete = processing.run("native:fieldcalculator", {
                 'INPUT': percentage_long['OUTPUT'],
                 'FIELD_NAME':'for_delete',
@@ -135,7 +134,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'CASE WHEN "percentage_long" >= 25 THEN 0 ELSE 1 END',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         agg_geom_line = processing.run("native:aggregate", {
                 'INPUT': for_delete['OUTPUT'],
                 'GROUP_BY':'"teryt"',
@@ -148,7 +147,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 {'aggregate': 'first_value','delimiter': ',','input': '"for_delete"','length': 1,'name': 'for_delete','precision': 0,'type': 2}],
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         join_evaluation = processing.run("native:joinattributestable", {
                 'INPUT': parameters['INPUT'],
                 'FIELD':'teryt',
@@ -160,7 +159,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'PREFIX':'',
                 'OUTPUT':QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         direction_plot_evaluation = processing.run("native:fieldcalculator", {
                 'INPUT': join_evaluation['OUTPUT'],
                 'FIELD_NAME':'direction_plot_evaluation',
@@ -170,7 +169,7 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'CASE WHEN ("direction_plot_clean" >= 0 AND "direction_plot_clean" <= 22) OR ("direction_plot_clean" > 157 AND "direction_plot_clean" <= 180) THEN 3 WHEN ("direction_plot_clean" > 22 AND "direction_plot_clean" <= 67) OR ("direction_plot_clean" > 112 AND "direction_plot_clean" <= 157) THEN 2 WHEN "direction_plot_clean" > 67 AND "direction_plot_clean" <= 112 THEN 1 ELSE 0 END',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
+
         direction_plot_evaluation_secound_parse = processing.run("native:fieldcalculator", {
                 'INPUT': direction_plot_evaluation['OUTPUT'],
                 'FIELD_NAME':'direction_plot_evaluation',
@@ -180,18 +179,14 @@ class PotrzebyFotoFizjologiczneProcessingAlgorithm(QgsProcessingAlgorithm):
                 'FORMULA':'if("for_delete" = 1, "direction_plot_evaluation" = 0, "direction_plot_evaluation")',
                 'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-        
-        
+
+
         # cleanig data
-        
+
         drop_fields = processing.run("native:deletecolumn", {
                 'INPUT': direction_plot_evaluation_secound_parse['OUTPUT'],
                 'COLUMN':['', ''],
                 'OUTPUT': parameters['OUTPUT']
                 }, is_child_algorithm=True, context=context, feedback=feedback)
-                
-        
-        
-        
-        
+
         return {'OUTPUT': drop_fields['OUTPUT']}
